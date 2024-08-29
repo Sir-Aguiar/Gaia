@@ -4,7 +4,6 @@ import com.example.gaia.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -14,15 +13,35 @@ import java.util.Map;
 @Service
 public class JWTService {
   private static final long EXPIRATION_TIME = 1000 * (14 * (60 * 60 * 24));
-  private final EnvironmentVariables environmentVariables;
+  private static final String SECRET = "1208ash";
 
-  @Autowired
-  public JWTService(EnvironmentVariables environmentVariables) {
-    this.environmentVariables = environmentVariables;
+  public static String getUsernameFromToken(String token) {
+    Claims claims = Jwts.parser()
+            .setSigningKey(SECRET)
+            .parseClaimsJws(token)
+            .getBody();
+    return claims.getSubject();
   }
 
+  public static boolean validateToken(String token, String username) {
+    final String extractedUsername = getUsernameFromToken(token);
+    return (extractedUsername.equals(username) && !isTokenExpired(token));
+  }
 
-  public String generateSessionToken(User user) {
+  private static Date getExpirationDateFromToken(String token) {
+    Claims claims = Jwts.parser()
+            .setSigningKey(SECRET)
+            .parseClaimsJws(token)
+            .getBody();
+    return claims.getExpiration();
+  }
+
+  private static boolean isTokenExpired(String token) {
+    final Date expiration = getExpirationDateFromToken(token);
+    return expiration.before(new Date());
+  }
+
+  public static String generateSessionToken(User user) {
     Claims claims = Jwts.claims().setSubject(user.getUsername());
 
     Map<String, Object> tokenClaims = new HashMap<>();
@@ -35,7 +54,6 @@ public class JWTService {
 
     return Jwts.builder().setClaims(claims)
             .setIssuedAt(new Date(now)).setExpiration(new Date(now + EXPIRATION_TIME))
-            .signWith(SignatureAlgorithm.HS512, environmentVariables.getJwtSecret()).compact();
+            .signWith(SignatureAlgorithm.HS512, SECRET).compact();
   }
-
 }

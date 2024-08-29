@@ -8,6 +8,7 @@ import com.example.gaia.errors.ApplicationError;
 import com.example.gaia.repository.UserRepository;
 import com.example.gaia.service.JWTService;
 import com.example.gaia.service.PasswordService;
+import com.example.gaia.service.ResponseHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController()
 @RequestMapping("/user")
@@ -39,7 +45,7 @@ public class UserController {
 
       userRepository.save(newUser);
 
-      SignInResponse response = new SignInResponse("Usuário criado com sucesso", HttpStatus.OK, jwtService.generateSessionToken(newUser));
+      SignInResponse response = new SignInResponse("Usuário criado com sucesso", HttpStatus.OK, JWTService.generateSessionToken(newUser));
       return ResponseEntity.status(response.getStatus()).body(response);
     } catch (DataIntegrityViolationException exception) {
       throw new ApplicationError("Nome de usuário já em uso", 400, null);
@@ -50,13 +56,16 @@ public class UserController {
   public ResponseEntity signIn(@RequestBody LoginDTO loginDTO) throws ApplicationError {
     User user = userRepository.findByUsername(loginDTO.getUsername());
 
+
+
     if (user == null) {
       throw new ApplicationError("", 404, null);
     }
 
     if (passwordService.matchPassword(loginDTO.getPassword(), user.getPassword())) {
-      SignInResponse response = new SignInResponse("Usuário logado com sucesso", HttpStatus.OK, jwtService.generateSessionToken(user));
-      return ResponseEntity.status(response.getStatus()).body(response);
+      String token = JWTService.generateSessionToken(user);
+
+      return ResponseHandler.getResponse("Usuário logado com sucesso", HttpStatus.OK, token);
     }
 
     throw new ApplicationError("Senha incorreta", 401, null);
